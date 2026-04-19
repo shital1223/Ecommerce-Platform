@@ -1,0 +1,12 @@
+server:
+  port: 8888
+spring:
+  application:
+    name: ConfigServer
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/shital1223/MicroServices-Config.git
+          username: ${GITHUB_USERNAME}
+          password: ${GITHUB_PAT}
