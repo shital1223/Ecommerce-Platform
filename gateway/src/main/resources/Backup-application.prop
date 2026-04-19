@@ -1,0 +1,40 @@
+
+
+
+# Default route prefix
+spring.cloud.gateway.routes[0].id=ECOM
+spring.cloud.gateway.routes[0].uri=http://localhost:8081
+#spring.cloud.gateway.routes[0].uri=lb://ecom
+spring.cloud.gateway.routes[0].predicates[0]=Path=/ecom/**
+# Optional filter to strip the '/api-gateway' prefix when forwarding the request
+#spring.cloud.gateway.routes[0].filters[0]=StripPrefix=1
+
+# to check logs when request forwarding using api-gateway
+logging.level.org.springframework.cloud.gateway=DEBUG
+logging.level.org.springframework.web.client=DEBUG
+
+
+
+
+#Service discovery configuration
+spring.application.name=api-gateway
+server.port=8080
+
+#Eureka configuration
+eureka.client.serviceUrl.defaultZone=http://localhost:8761/eureka/
+eureka.client.register-with-eureka=true
+eureka.client.fetch-registry=true
+#API Gateway doesn't need to register itself, it's only discovering services
+
+
+# Enable dynamic route discovery using Eureka
+# Enables automatic route discovery from Eureka
+spring.cloud.gateway.discovery.locator.enabled=true
+
+
+
+logging.level.org.springframework.cloud.loadbalancer=TRACE
+logging.level.org.springframework.web.client.RestTemplate=DEBUG
+logging.level.org.springframework.cloud.discovery=TRACE
+
+spring.cloud.gateway.discovery.locator.lower-case-service-id= true
