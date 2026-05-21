@@ -1,0 +1,351 @@
+Here is a concise summary for your notes.
+
+Docker Setup Summary – Ecommerce Platform
+Goal
+
+Run infrastructure/supporting services on Docker and business services locally.
+
+Architecture:
+
+Docker:
+Postgres
+Config Server
+Eureka Server
+API Gateway
+
+Local (IntelliJ):
+Product Service
+User Service
+Order Service
+
+Benefits:
+
+Less IntelliJ load
+Better laptop performance
+Automatic startup order
+One-command infra startup
+Easier logs and management
+
+----------------------------------------
+Overall Flow
+
+Startup dependency flow:
+
+Postgres
+    ↓
+Config Server
+    ↓
+Eureka Server
+    ↓
+API Gateway
+    ↓
+Local Services (Product/User/Order)
+
+Compose health checks ensure proper ordering.
+-----------------------------------------------
+Dockerfile Setup
+
+Each dockerized service contains:
+
+Location:
+
+same level as pom.xml
+
+Example:
+
+config-server/
+├── Dockerfile
+├── .dockerignore
+├── pom.xml
+└── src/
+
+Dockerfile pattern:
+
+FROM eclipse-temurin:21-jdk
+
+WORKDIR /app
+
+COPY target/<jar-name>.jar app.jar
+
+ENTRYPOINT ["java","-jar","app.jar"]
+
+Examples:
+
+Config:
+
+COPY target/ConfigServer-0.0.1-SNAPSHOT.jar config-server.jar
+
+Eureka:
+
+COPY target/EurekaServer-0.0.1-SNAPSHOT.jar eureka-server.jar
+
+Gateway:
+
+COPY target/ApiGateway-0.0.1-SNAPSHOT.jar gateway.jar
+
+Important:
+
+Use:.jar
+
+NOT:.jar.original
+
+--------------------------------------------
+.dockerignore
+
+Location:
+
+same folder as Dockerfile
+
+Content:
+
+.git/
+.idea/
+*.iml
+*.log
+logs/
+README.md
+
+Do NOT ignore:
+
+target/
+
+because Docker needs jar.
+---------------------------
+Build Images
+
+Inside each service:
+
+Build jar:
+mvn clean package
+Build image:
+
+Config:
+
+docker build -t config-server .
+
+Eureka:
+
+docker build -t eureka-server .
+
+Gateway:
+
+docker build -t api-gateway .
+
+-t = image tag/name.
+
+. = current folder build context.
+
+Check images:
+
+docker images
+--------------------------------
+
+Docker Compose Setup
+
+Folder:
+
+microservices-infra/
+└── docker-compose.yml
+
+Purpose:
+
+auto-create network
+auto-start services
+startup sequencing
+one-command infra management
+
+Compose handles:
+
+network creation
+container startup
+health checks
+dependency ordering
+
+No manual:
+
+docker network create
+docker run
+
+needed.
+
+---------------------------
+Docker Networking Rule
+Container → Container
+
+Use:
+
+service/container name
+
+Example:
+
+Gateway:
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka
+
+Eureka:
+
+spring:
+  config:
+    import: configserver:http://config-server:8888
+
+Reason:localhost inside container = same container
+not another service.
+--------------------
+Local → Docker
+
+Use:
+
+localhost
+
+Product/User/Order:
+
+Config:
+
+spring:
+  config:
+    import: configserver:http://localhost:8888
+
+Eureka:
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+Reason:
+
+local machine → exposed Docker ports
+------------------------------
+Docker → Local
+
+Needed for:
+
+Gateway container → Product/User/Order local
+
+Local services:
+
+eureka:
+  instance:
+    hostname: host.docker.internal
+
+Otherwise Gateway cannot reach:
+
+localhost
+
+of laptop.
+----------------------------
+
+Health Checks / Startup Order
+
+Actuator required.
+
+Dependency:
+
+spring-boot-starter-actuator
+
+Expose:
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+Health endpoint:
+
+/actuator/health
+
+Compose waits for:
+
+service_healthy
+
+before starting dependent services.
+------------------
+Important Commands
+Start Infra
+
+From:
+
+microservices-infra
+
+Run:
+
+docker compose up -d
+
+This:
+
+creates network
+starts Postgres
+waits
+starts Config
+waits
+starts Eureka
+starts Gateway
+--------------------
+Stop Infra
+docker compose down
+
+Removes:
+
+containers
+network
+----------------
+
+Rebuild After Changes
+
+If Dockerfile/config changed:
+
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+
+--------------
+Check Running Containers
+docker ps
+-----------------
+View Logs
+
+Config:
+
+docker logs -f config-server
+
+Eureka:
+
+docker logs -f eureka-server
+
+Gateway:
+
+docker logs -f api-gateway
+
+Postgres:
+
+docker logs -f postgres
+-------------------
+Git
+
+Commit:
+
+✅ Dockerfile
+✅ .dockerignore
+✅ docker-compose.yml
+
+Do NOT commit:
+
+❌ target/
+❌ jars
+
+Recommended structure:
+
+parent-project/
+│
+├── config-server/
+├── eureka-server/
+├── api-gateway/
+├── product-service/
+├── user-service/
+├── order-service/
+└── microservices-infra/
+    └── docker-compose.yml
